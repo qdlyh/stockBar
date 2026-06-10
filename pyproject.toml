@@ -1,0 +1,28 @@
+[project]
+name = "stockbar"
+version = "0.1.0"
+description = "个人 A股 多因子左右双线影子盘系统"
+requires-python = ">=3.11"
+dependencies = [
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "akshare>=1.12",
+    "pyarrow>=14.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["stockbar*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: 联网集成测试（默认运行，离线可用 -m 'not integration' 跳过）",
+]
