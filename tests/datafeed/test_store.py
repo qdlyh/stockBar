@@ -65,3 +65,34 @@ def test_save_and_load_calendar(tmp_path):
     dates = [date(2024, 1, 2), date(2024, 1, 3), date(2024, 1, 4)]
     store.save_calendar(dates)
     assert store.load_calendar() == dates
+
+
+# Fix 1: NaT / None dates must be dropped, not persisted
+def test_save_bars_drops_nat_date(tmp_path):
+    """save_bars + load_bars + last_bar_date must not raise when a row has NaT date,
+    and that row is dropped."""
+    store = LocalStore(tmp_path)
+    df = _bars([date(2024, 1, 2), None, date(2024, 1, 4)], [10.0, 11.0, 12.0])
+    # NaT row: replace None with pd.NaT for the date column
+    df["date"] = df["date"].astype(object)
+    df.loc[1, "date"] = pd.NaT
+    store.save_bars("600000", df)
+    out = store.load_bars("600000", date(2024, 1, 1), date(2024, 1, 31))
+    assert list(out["date"]) == [date(2024, 1, 2), date(2024, 1, 4)]
+    assert list(out["close"]) == [10.0, 12.0]
+    # last_bar_date must not crash
+    assert store.last_bar_date("600000") == date(2024, 1, 4)
+
+
+def test_append_bars_drops_nat_date(tmp_path):
+    """append_bars must drop NaT date rows without raising."""
+    store = LocalStore(tmp_path)
+    store.save_bars("600000", _bars([date(2024, 1, 2)], [10.0]))
+    df2 = _bars([None, date(2024, 1, 3)], [99.0, 11.0])
+    df2["date"] = df2["date"].astype(object)
+    df2.loc[0, "date"] = pd.NaT
+    store.append_bars("600000", df2)
+    out = store.load_bars("600000", date(2024, 1, 1), date(2024, 1, 31))
+    assert list(out["date"]) == [date(2024, 1, 2), date(2024, 1, 3)]
+    # last_bar_date must not crash
+    assert store.last_bar_date("600000") == date(2024, 1, 3)

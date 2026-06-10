@@ -12,9 +12,17 @@ from stockbar.datafeed.source import BAR_COLUMNS, StockInfo
 
 
 def _to_date(v) -> date:
+    if pd.isna(v):
+        return None  # caller must filter these out
     if isinstance(v, date) and not isinstance(v, datetime):
         return v
     return pd.Timestamp(v).date()
+
+
+def _drop_null_dates(df: pd.DataFrame) -> pd.DataFrame:
+    """Remove rows where the 'date' column is null/NaT."""
+    mask = df["date"].map(lambda v: not pd.isna(v))
+    return df.loc[mask].reset_index(drop=True)
 
 
 class LocalStore:
@@ -42,14 +50,17 @@ class LocalStore:
 
     def save_bars(self, code: str, df: pd.DataFrame) -> None:
         out = df[BAR_COLUMNS].copy()
+        out = _drop_null_dates(out)
         out["date"] = out["date"].map(_to_date)
         out = out.sort_values("date").reset_index(drop=True)
         out.to_parquet(self._bars_path(code), index=False)
 
     def append_bars(self, code: str, df: pd.DataFrame) -> None:
         existing = self._read_all_bars(code)
-        combined = pd.concat([existing, df[BAR_COLUMNS]], ignore_index=True)
+        new = _drop_null_dates(df[BAR_COLUMNS].copy())
+        combined = pd.concat([existing, new], ignore_index=True)
         combined["date"] = combined["date"].map(_to_date)
+        combined = _drop_null_dates(combined)
         combined = (
             combined.drop_duplicates("date", keep="last")
             .sort_values("date")

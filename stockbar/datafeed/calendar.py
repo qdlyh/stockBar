@@ -36,7 +36,7 @@ class TradingCalendar:
         """从交易日 d 向前(n>0)/向后(n<0)偏移 n 个交易日。d 必须是交易日。"""
         if d not in self._set:
             raise ValueError(f"{d} 不是交易日")
-        i = self._dates.index(d) + n
+        i = bisect.bisect_left(self._dates, d) + n
         if i < 0 or i >= len(self._dates):
             raise IndexError(f"偏移越界: {d} offset {n}")
         return self._dates[i]
