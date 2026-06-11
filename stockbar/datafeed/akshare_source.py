@@ -10,7 +10,7 @@ from datetime import date
 import akshare as ak
 import pandas as pd
 
-from stockbar.datafeed.instruments import classify_board
+from stockbar.datafeed.instruments import Board, classify_board
 from stockbar.datafeed.source import (
     BAR_COLUMNS,
     FUNDAMENTAL_COLUMNS,
@@ -76,8 +76,15 @@ class AkshareSource(DataSource):
         return out
 
     def get_daily_bars(self, code: str, start: date, end: date) -> pd.DataFrame:
-        raw = ak.stock_zh_a_hist(
-            symbol=code, period="daily",
+        # 腾讯源（stock_zh_a_daily）走通，东财源被代理拦截
+        board = classify_board(code)
+        prefix = {Board.MAIN: "sh", Board.GEM: "sz", Board.STAR: "sh", Board.BSE: "bj"}
+        if code.startswith(("000", "001", "002", "003")):
+            prefix[Board.MAIN] = "sz"
+        exchange = prefix.get(board, "sh")
+        symbol = f"{exchange}{code}"
+        raw = ak.stock_zh_a_daily(
+            symbol=symbol,
             start_date=start.strftime("%Y%m%d"),
             end_date=end.strftime("%Y%m%d"),
             adjust="qfq",
