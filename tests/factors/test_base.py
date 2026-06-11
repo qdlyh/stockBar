@@ -58,3 +58,28 @@ def test_score_pool_empty():
     feat = pd.DataFrame({"mom": [0.1]}, index=["A"])
     score = score_pool(feat, [], [FactorSpec("mom", 1.0)])
     assert score.empty
+
+
+# Fix 1: select_top_n must exclude NaN-scored stocks
+def test_select_top_n_excludes_nan():
+    """NaN-scored stocks must not appear in the result, even when n > valid count."""
+    score = pd.Series({"A": 1.0, "B": float("nan"), "C": 2.0})
+    result = select_top_n(score, 5)
+    assert result == ["C", "A"]
+
+
+# Fix 6: score_pool yields NaN composite score for a stock with a NaN factor value
+def test_score_pool_nan_factor_yields_nan_score():
+    """When one factor column has a partial NaN, the stock with NaN gets NaN composite score.
+    standardize propagates NaN for individual NaN entries (std/mean ignore NaN but the NaN
+    entry itself stays NaN after (NaN - mean) / std == NaN).
+    """
+    feat = pd.DataFrame({
+        "pb":  [1.0, np.nan, 3.0],   # B has NaN pb
+        "mom": [0.1,    0.2, 0.3],
+    }, index=["A", "B", "C"])
+    specs = [FactorSpec("pb", -1.0), FactorSpec("mom", +1.0)]
+    score = score_pool(feat, ["A", "B", "C"], specs)
+    assert pd.isna(score["B"]), "stock with NaN factor value should have NaN composite score"
+    assert not pd.isna(score["A"])
+    assert not pd.isna(score["C"])

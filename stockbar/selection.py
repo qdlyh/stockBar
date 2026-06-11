@@ -29,17 +29,23 @@ def build_candidate_lists(
     top_n: int = 5,
     lookback: int = 120,
     min_amount: float = 1e7,
-    min_bars: int = 60,
+    min_bars: int = 63,
+    fund_lookback: int = 450,
 ) -> CandidateLists:
-    """从缓存读取近 lookback 自然日数据，输出左右榜前 top_n 候选。"""
+    """从缓存读取近 lookback 自然日数据，输出左右榜前 top_n 候选。
+
+    价格数据使用 lookback 窗口；财务数据（PB/PE）使用更宽的 fund_lookback 窗口，
+    以确保季报数据在 lookback 之前时仍能被正确加载。
+    """
     start = as_of - timedelta(days=lookback)
+    fund_start = as_of - timedelta(days=fund_lookback)
     panel: dict[str, pd.DataFrame] = {}
     funds: dict[str, pd.DataFrame] = {}
     for info in stocks:
         bars = store.load_bars(info.code, start, as_of)
         if not bars.empty:
             panel[info.code] = bars
-            funds[info.code] = store.load_fundamentals(info.code, start, as_of)
+            funds[info.code] = store.load_fundamentals(info.code, fund_start, as_of)
 
     features = compute_features(stocks, panel, funds, as_of)
     tradable = build_tradable(features, min_amount=min_amount, min_bars=min_bars)

@@ -44,5 +44,5 @@ def score_pool(features: pd.DataFrame, codes: list[str], specs: list[FactorSpec]
 
 
 def select_top_n(score: pd.Series, n: int) -> list[str]:
-    """合成分降序取前 n 的 codes。"""
-    return list(score.sort_values(ascending=False).head(n).index)
+    """合成分降序取前 n 的 codes。NaN 分值的 codes 自动排除。"""
+    return list(score.dropna().sort_values(ascending=False).head(n).index)

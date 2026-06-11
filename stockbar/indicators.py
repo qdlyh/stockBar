@@ -19,6 +19,8 @@ def rsi(close: pd.Series, n: int = 14) -> pd.Series:
     out = 100.0 - 100.0 / (1.0 + rs)
     out = out.where(avg_loss != 0.0, 100.0)   # 全涨：avg_loss=0 → 100
     out = out.where(avg_gain != 0.0, 0.0)      # 全跌：avg_gain=0 → 0
+    flat = (avg_gain == 0.0) & (avg_loss == 0.0)
+    out = out.where(~flat, 50.0)              # 平盘：avg_gain==avg_loss==0 → 50
     out[avg_gain.isna()] = np.nan              # 数据不足保持 NaN
     return out
 
@@ -35,7 +37,10 @@ def ret_n(close: pd.Series, n: int) -> pd.Series:
 
 
 def is_new_high(close: pd.Series, n: int) -> bool:
-    """最新收盘是否为近 n 期（含当日）最高。数据不足返回 False。"""
+    """最新收盘是否为近 n 期（含当日）最高。
+    若可用数据不足 n+1 个点，则用现有的全部有效数据判断（降级为"历史新高"语义）。
+    仅当序列完全无数据时返回 False。
+    """
     window = close.tail(n + 1)
     if len(window) < n + 1 or window.isna().any():
         # 至少需要 n+1 个点才能说"近 n 期新高"；不足时用现有窗口判断

@@ -53,3 +53,17 @@ def test_is_vol_price_up():
     vol = pd.Series([100.0, 100, 100, 100, 100, 300])  # 末日放量 > 5日均量
     assert is_vol_price_up(close, vol) is True
     assert is_vol_price_up(pd.Series([11.0, 10]), pd.Series([100.0, 300])) is False  # 末日下跌
+
+
+# Fix 3: RSI for a flat (constant) series should be 50
+def test_rsi_flat_is_50():
+    """Constant price → avg_gain==0 and avg_loss==0 → RSI should be 50 (neutral)."""
+    flat = pd.Series([5.0] * 20)
+    result = rsi(flat, 14).iloc[-1]
+    assert result == 50.0, f"Expected 50.0 for flat series, got {result}"
+
+
+def test_rsi_flat_insufficient_is_nan():
+    """Constant price but fewer than n+1 bars → still NaN (insufficient data)."""
+    flat = pd.Series([5.0] * 3)
+    assert np.isnan(rsi(flat, 14).iloc[-1])
